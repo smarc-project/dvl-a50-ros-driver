@@ -86,7 +86,7 @@ class DVLDriver(Node):
         self.connected = False
 
         #used a timer instead of a while loop to stop the node from blocking
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(0.01, self.timer_callback)
 
 
     def timer_callback(self):
@@ -177,32 +177,33 @@ class DVLDriver(Node):
         # DVL data contains the "time" key
         if "time" in data:
 
-            if data['velocity_valid']:
+            #if data['velocity_valid']:
+            if True:
 
                 theDVL.header.stamp = self.get_clock().now().to_msg()
                 theDVL.header.frame_id = self.dvl_frame
 
-                theDVL.velocity.x = data["vx"]
-                theDVL.velocity.y = data["vy"]
-                theDVL.velocity.z = data["vz"]
+                theDVL.velocity.x = float(data["vx"])
+                theDVL.velocity.y = float(data["vy"])
+                theDVL.velocity.z = float(data["vz"])
                 theDVL.velocity_covariance[0] = data["covariance"][0][0]
                 theDVL.velocity_covariance[4] = data["covariance"][1][1]
                 theDVL.velocity_covariance[8] = data["covariance"][2][2]
-                theDVL.altitude = data["altitude"]
+                theDVL.altitude = float(data["altitude"])
 
                 # Todo : Add beam covariances (not available for waterlinked)
 
                 beam0.range = float(data["transducers"][0]["distance"])
-                beam0.velocity = data["transducers"][0]["velocity"]
+                beam0.velocity = float(data["transducers"][0]["velocity"])
 
                 beam1.range = float(data["transducers"][1]["distance"])
-                beam1.velocity = data["transducers"][1]["velocity"]
+                beam1.velocity = float(data["transducers"][1]["velocity"])
 
                 beam2.range = float(data["transducers"][2]["distance"])
-                beam2.velocity = data["transducers"][2]["velocity"]
+                beam2.velocity = float(data["transducers"][2]["velocity"])
 
                 beam3.range = float(data["transducers"][3]["distance"])
-                beam3.velocity = data["transducers"][3]["velocity"]
+                beam3.velocity = float(data["transducers"][3]["velocity"])
 
                 theDVL.beams = [beam0, beam1, beam2, beam3]
 
@@ -255,6 +256,9 @@ class DVLDriver(Node):
             self.s.connect((self.TCP_IP, self.TCP_PORT))
             connected = True
             self.get_logger().info("[DVL Driver] Successfully connected")
+
+            # Set speed of sound in water
+            self.set_config(speed_of_sound=1515)
 
         except socket.error as err:
             error_message = "[DVL Driver] Could not connect, DVL might be booting? {}".format(err)
@@ -322,9 +326,9 @@ class DVLDriver(Node):
             command_string+= str(val) if val is not None else ""
 
         command_string += "\n"
-        info_message = "[DVL Driver] Sending command: {}".format(command_string)
-        self.get_logger().info(info_message)
         self.s.send(command_string.encode())
+        info_message = "[DVL Driver] Sent command: {}".format(command_string)
+        self.get_logger().info(info_message)
 
 def main(args=None,namespace = None):
     rclpy.init(args=args)
